@@ -24,7 +24,7 @@ int core0_main(void)
     int direction = 1;
     while(1)
     {
-        motor_value = motor_pid(25);
+        motor_value = motor_pid(20);
         movChA_PWM(motor_value, direction);
         if ( !(getcntDelay() % 100000) )
         {
