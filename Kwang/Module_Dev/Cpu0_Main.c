@@ -53,6 +53,7 @@ int core0_main(void)
     Init_Mystdio();
     Init_ToF();
     Init_Buzzer();
+    Init_DCMotors();
         
     while(1)
     {

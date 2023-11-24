@@ -16,7 +16,7 @@
 #define ISR_PRIORITY_SCUERU_INT0   40                       /* Define the SCU ERU interrupt priority                */
 #define REQ_IN_D2                  &IfxScu_REQ6_P02_0_IN    /* External request pin D2                              */
 #define REQ_IN_D3                  &IfxScu_REQ14_P02_1_IN   /* External request pin D3                              */
-#define TRIGGER_PIN                &MODULE_P02, 1            /* Pin that is toggled by pressing the board's button 00, 7 */
+#define TRIGGER_PIN                &MODULE_P02, 0          /* Pin that is toggled by pressing the board's button 00, 7 */
 #define LED1                       &MODULE_P10,1
 #define LED2                       &MODULE_P10,2            /* LED1 which gets toggled in Interrupt Service Routine  */
 
@@ -24,7 +24,7 @@
 /*-------------------------------------------------Global variables--------------------------------------------------*/
 /*********************************************************************************************************************/
 ERUconfig g_ERUconfig;      /* SCU_ERU global data                                  */
-extern unsigned int INTERRUT_VAL = 0;
+volatile unsigned int INTERRUT_VAL = 0u;
 /*********************************************************************************************************************/
 /*----------------------------------------------Function Implementations---------------------------------------------*/
 /*********************************************************************************************************************/
@@ -46,8 +46,9 @@ void SCUERU_Int0_Handler(void)
 {
     IfxPort_setPinState(LED1, IfxPort_State_toggled);                        /* Toggle LED                       */
     IfxPort_setPinState(LED2, IfxPort_State_toggled);                        /* Toggle LED                       */
-    // INTERRUT_VAL = INTERRUT_VAL ^ 1;
-    // waitTime(IfxStm_getTicksFromMilliseconds(BSP_DEFAULT_TIMER, 10));
+    if(INTERRUT_VAL == 1u)INTERRUT_VAL = 0u;
+    else INTERRUT_VAL = 0u;
+    waitTime(IfxStm_getTicksFromMilliseconds(BSP_DEFAULT_TIMER, 30));
 }
 
 /* This functions initializes the output pin for the LED1 and the pin which toggles the state for generating
@@ -63,7 +64,7 @@ void initPeripheralsAndERU(void)
     IfxPort_setPinState(LED1, IfxPort_State_low);                           /* Turn off LED1 (LED1 is low-active) */
 
     /* Trigger pin */
-    g_ERUconfig.reqPin = REQ_IN_D3; /* Select external request pin */
+    g_ERUconfig.reqPin = REQ_IN_D2; /* Select external request pin */
 
     /* Initialize this pin with pull-down enabled
      * This function will also configure the input multiplexers of the ERU (Register EXISx)

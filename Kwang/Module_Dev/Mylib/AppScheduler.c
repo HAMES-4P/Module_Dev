@@ -19,6 +19,8 @@ typedef struct
     uint32_t u32nuCnt100ms;
 }TestCnt;
 
+int motor_value = 0, direction = 1;
+
 // Static Function Prototype
 static void AppTask1ms();
 static void AppTask10ms();
@@ -73,13 +75,18 @@ void AppTask10ms()
 void AppTask100ms()
 {
     blink_LED();
+    if(INTERRUT_VAL == 1)
+    {
+//        motor_value = motor_pid(10);
+//        movChA_PWM(10, direction);
+    }
 }
 
 void AppTask500ms()
 {
     int distance = getTofDistance();
 
-    my_printf("distance = %d\n", distance);
+    my_printf("distance = %d, motor_value : %d, %2.f\n", distance, motor_value, getWValue());
 
     if(distance > 0 && distance < 100)
     {

@@ -9,6 +9,8 @@
 #include <Ifx_Types.h>
 #include <IfxGpt12.h>
 #include <IfxPort.h>
+#include <Motor.h>
+#include <math.h>
 #include "Ifx_Types.h"
 #include "IfxGpt12.h"
 #include "IfxPort.h"
@@ -20,7 +22,14 @@
 #define GPT1_BLOCK_PRESCALER        32      /* GPT1 block prescaler value                 */
 #define TIMER_T3_INPUT_PRESCALER    32      /* Timer input prescaler value                */
 #define GPT120_MODULE_FREQUENCY     100000000
+#define PI                          3.14159265358979323
 
+#define KP                          0.3
+#define KI                          0.6
+#define KD                          0.02
+
+#define ENC_A_CH    &MODULE_P02,4
+#define ENC_B_CH    &MODULE_P02,5
 #define PWM_A       &MODULE_P02,1
 #define PWM_B       &MODULE_P10,3
 
@@ -28,6 +37,10 @@ static volatile unsigned int lMotorDuty = 20;
 static volatile unsigned int rMotorDuty = 20;
 static volatile unsigned int cnt_10us = 0;
 static volatile unsigned int cntDelay = 0;
+static volatile float theta, theta_old;
+static volatile float w, w_old;
+
+static void update_encoder(void);
 
 IFX_INTERRUPT(IsrGpt2T6Handler, 0, ISR_PRIORITY_GPT2T6_TIMER);
 void IsrGpt2T6Handler()
@@ -38,18 +51,34 @@ void IsrGpt2T6Handler()
         IfxPort_setPinLow(PWM_A);   /*Left Motor (CH-A)*/
     }
 
+    /*
     if (cnt_10us < rMotorDuty) {
-        IfxPort_setPinHigh(PWM_B);  /*Right Motor (CH-B)*/
+        IfxPort_setPinHigh(PWM_B);  // Right Motor (CH-B)
     } else {
-        IfxPort_setPinLow(PWM_B);   /*Right Motor (CH-B)*/
+        IfxPort_setPinLow(PWM_B);   // Right Motor (CH-B)
     }
+    */
 
     if (cnt_10us == 100) {
         cnt_10us = 0;
+        update_encoder();
     } else {
         cnt_10us++;
     }
     cntDelay++;
+}
+
+float32 LPF(float32 y_old, float32 x, float32 Ts, float32 band)
+{
+    double A1=Ts/(Ts+1/band);
+    float32 y = y_old+A1*(x-y_old);
+
+    return y;
+}
+
+float getWValue()
+{
+    return w;
 }
 
 unsigned int getLeftMotorDuty()
@@ -177,6 +206,99 @@ void setGpt12_T4(unsigned short value)
 unsigned int getGpt12_T4()
 {
     return IfxGpt12_T4_getTimerValue(&MODULE_GPT120);
+}
+
+void update_encoder(void)
+{
+    static const float Ts = 0.00001;
+    static boolean ENCA, ENCB;
+    static int PosCnt = 0, PosCntd = 0;
+    static int S, S_old=0;
+    static int Direction, Pos_deg;
+    static float32 Pos_rad;
+
+    ENCA = IfxPort_getPinState(ENC_A_CH); // Encoder A signal state
+    ENCB = IfxPort_getPinState(ENC_B_CH); // Encoder B signal state
+    if (ENCA == FALSE && ENCB == FALSE)
+    {
+        S = 0;
+    }
+    else if(ENCA == FALSE && ENCB == TRUE)
+    {
+        S = 1;
+    }
+    else if(ENCA == TRUE && ENCB == TRUE)
+    {
+        S = 2;
+    }
+    else if(ENCA == TRUE && ENCB == FALSE)
+    {
+        S = 3;
+    }
+
+    // 모터 회전 방향 확인
+    // S가 증가하면 정방향 direction = 1
+    // S가 감소하면 역방향 direction = 0
+    if (S - S_old==1 || S - S_old == -3)
+    {
+        PosCnt = PosCntd - 1;
+        Direction = 1;
+    }
+    else if (S - S_old ==-1 || S - S_old == 3)
+    {
+        PosCnt = PosCntd + 1;
+        Direction = 0;
+    }
+    S_old = S;
+
+
+    Pos_rad = (PosCnt * PI) / 24;   //엔코더 라디안 값, 제어에 이용할 위치 정보
+    Pos_deg = (int)(PosCnt*7.5);
+    PosCntd = PosCnt;
+
+    theta = Pos_rad;
+    w = (theta-theta_old)/Ts;
+    w = LPF(w_old, w, Ts, 0.7);
+    w_old = w;
+    theta_old = theta;
+}
+
+int motor_pid(float w_ref)
+{
+    static const float32 Ts = 0.001;
+    static float32 Vin;
+    static float32 error_w = 0;
+    static float32 error_w_int, error_w_int_old = 0;
+    static float32 error_w_det, error_w_det_old = 0;
+    static float32 error_w_det_filt = 0, error_w_det_filt_old = 0;
+
+    error_w = w_ref - w;
+
+    error_w_int=error_w_int_old + (error_w * Ts);
+    error_w_int_old=error_w_int;
+
+    error_w_det=(error_w_det_old-error_w)/Ts;
+    error_w_det_old = error_w_det;
+
+    error_w_det_filt = LPF(error_w_det_filt_old, error_w_det_filt, Ts, 1);
+    error_w_det_filt_old = error_w_det_filt;
+
+    if (error_w_int>10)
+    {error_w_int=10;}
+
+    Vin = KP*error_w + KI*error_w_int + KD*error_w_det_filt;
+
+    if (Vin>11)
+    {
+        Vin=11;
+    }
+    else if(Vin<0)
+    {
+        Vin=0;
+    }
+
+    Vin = ((Vin*100) / 12);
+    return (int)Vin;
 }
 
 

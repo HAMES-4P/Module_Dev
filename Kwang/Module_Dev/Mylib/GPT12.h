@@ -8,12 +8,14 @@
 #ifndef MYLIB_GPT12_H_
 #define MYLIB_GPT12_H_
 
+int motor_pid(float w_ref);
 unsigned int getLeftMotorDuty(void);
 unsigned int getRightMotorDuty(void);
 void setLeftMotorDuty(unsigned int duty);
 void setRightMotorDuty(unsigned int duty);
 unsigned int getcntDelay(void);
 void setcntDelay(unsigned int n);
+float getWValue(void);
 
 void IsrGpt120T3Handler_Motor(void);
 void IsrGpt2T6Handler(void);

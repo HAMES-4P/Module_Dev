@@ -32,6 +32,6 @@ typedef struct
 /*********************************************************************************************************************/
 void initPeripheralsAndERU(void);
 
-extern unsigned int INTERRUT_VAL;
+extern volatile unsigned int INTERRUT_VAL;
 
 #endif /* MYLIB_ERU_INTERRUPT_H_ */
