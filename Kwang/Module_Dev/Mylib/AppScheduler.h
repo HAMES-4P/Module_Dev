@@ -10,6 +10,6 @@
 
 #include "Ifx_Types.h"
 
-extern void AppScheduling(int*);
+extern void AppScheduling();
 
 #endif /* MYLIB_APPSCHEDULER_H_ */

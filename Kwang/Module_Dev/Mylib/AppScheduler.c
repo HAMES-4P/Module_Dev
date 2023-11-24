@@ -6,8 +6,11 @@
  */
 #include "AppScheduler.h"
 #include "Driver_Stm.h"
-#include "Mylib/ERU_Interrupt.h"
-#include "Mylib/Blinky_LED.h"
+#include "ERU_Interrupt.h"
+#include "GPIO.h"
+#include "Terminal_stdio.h"
+#include "Buzzer.h"
+#include "Tof.h"
 
 typedef struct
 {
@@ -20,27 +23,38 @@ typedef struct
 static void AppTask1ms();
 static void AppTask10ms();
 static void AppTask100ms();
+static void AppTask500ms();
 
 TestCnt stTestCnt;
 
-void AppScheduling(int* status)
+void AppScheduling()
 {
-    if(stSchedulingInfo.u8nuScheduling1msFlag == 1u)
+    if(stSchedulingInfo.u8nuScheduling100msFlag == 1u)
     {
-        stSchedulingInfo.u8nuScheduling1msFlag = 0u;
-        AppTask1ms(&status);
-
-        if(stSchedulingInfo.u8nuScheduling10msFlag == 1u)
-        {
-            stSchedulingInfo.u8nuScheduling10msFlag = 0u;
-            AppTask10ms(&status);
-        }
-
-        if(stSchedulingInfo.u8nuScheduling100msFlag == 1u)
-        {
-            stSchedulingInfo.u8nuScheduling100msFlag = 0u;
-            AppTask100ms();
-        }
+        stSchedulingInfo.u8nuScheduling100msFlag = 0u;
+        AppTask100ms();
+    }
+//    if(stSchedulingInfo.u8nuScheduling1msFlag == 1u)
+//    {
+//        stSchedulingInfo.u8nuScheduling1msFlag = 0u;
+//        AppTask1ms(&status);
+//
+//        if(stSchedulingInfo.u8nuScheduling10msFlag == 1u)
+//        {
+//            stSchedulingInfo.u8nuScheduling10msFlag = 0u;
+//            AppTask10ms(&status);
+//        }
+//
+//        if(stSchedulingInfo.u8nuScheduling100msFlag == 1u)
+//        {
+//            stSchedulingInfo.u8nuScheduling100msFlag = 0u;
+//            AppTask100ms();
+//        }
+//    }
+    if(stSchedulingInfo.u8nuScheduling500msFlag == 1u)
+    {
+        stSchedulingInfo.u8nuScheduling500msFlag = 0u;
+        AppTask500ms();
     }
     return;
 }
@@ -58,6 +72,22 @@ void AppTask10ms()
 
 void AppTask100ms()
 {
-    blinkLED();
+    blink_LED();
+}
+
+void AppTask500ms()
+{
+    int distance = getTofDistance();
+
+    my_printf("distance = %d\n", distance);
+
+    if(distance > 0 && distance < 100)
+    {
+        setBeepCycle(200);
+    }
+    else
+    {
+        setBeepCycle(0);
+    }
 }
 
