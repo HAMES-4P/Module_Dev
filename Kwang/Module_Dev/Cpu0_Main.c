@@ -27,8 +27,8 @@
 #include "Ifx_Types.h"
 #include "IfxCpu.h"
 #include "IfxScuWdt.h"
-#include "Mylib/ERU_Interrupt.h"
-#include "Mylib/Blinky_LED.h"
+#include "Mylib/GPIO.h"
+#include "Mylib/AppScheduler.h"
 
 IfxCpu_syncEvent g_cpuSyncEvent = 0;
 
@@ -49,7 +49,10 @@ int core0_main(void)
     /* Init  */
     initPeripheralsAndERU();
     Driver_Stm_Init();
-    initLED();
+    Init_GPIO();
+    Init_Mystdio();
+    Init_ToF();
+    Init_Buzzer();
         
     while(1)
     {
