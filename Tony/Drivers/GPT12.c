@@ -18,8 +18,8 @@
 #define GPT120_MODULE_FREQUENCY     100000000
 #define PI                          3.14159265358979323
 
-#define KP                          0.12
-#define KI                          0.33
+#define KP                          0.31
+#define KI                          0.63
 #define KD                          0.0003
 
 #define ENC_A_CH    &MODULE_P02,4
@@ -235,12 +235,12 @@ void update_encoder(void)
     // S가 감소하면 역방향 direction = 0
     if (S - S_old==1 || S - S_old == -3)
     {
-        PosCnt = PosCntd - 1;
+        PosCnt = PosCntd + 1;
         Direction = 1;
     }
     else if (S - S_old ==-1 || S - S_old == 3)
     {
-        PosCnt = PosCntd + 1;
+        PosCnt = PosCntd - 1;
         Direction = 0;
     }
     S_old = S;
@@ -282,9 +282,9 @@ unsigned char motor_pid(float w_ref)
 
     Vin = (KP*error_w + KI*error_w_int + KD*error_w_det_filt);
 
-    if (Vin>11)
+    if (Vin>11.5)
     {
-        Vin=11;
+        Vin=11.5;
     }
     else if(Vin<0)
     {
