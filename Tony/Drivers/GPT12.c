@@ -18,9 +18,9 @@
 #define GPT120_MODULE_FREQUENCY     100000000
 #define PI                          3.14159265358979323
 
-#define KP                          0.3
-#define KI                          0.6
-#define KD                          0.02
+#define KP                          0.12
+#define KI                          0.33
+#define KD                          0.0003
 
 #define ENC_A_CH    &MODULE_P02,4
 #define ENC_B_CH    &MODULE_P02,5
@@ -31,7 +31,7 @@ static volatile unsigned int lMotorDuty = 20;
 static volatile unsigned int rMotorDuty = 20;
 static volatile unsigned int cnt_10us = 0;
 static volatile unsigned int cntDelay = 0;
-static volatile float theta, theta_old;
+static volatile double theta, theta_old;
 static volatile float w, w_old;
 
 static void update_encoder(void);
@@ -52,13 +52,13 @@ void IsrGpt2T6Handler()
         IfxPort_setPinLow(PWM_B);   // Right Motor (CH-B)
     }
     */
-
-    if (cnt_10us == 100) {
-        cnt_10us = 0;
+    if ( !(cnt_10us % 100) )
+    {
         update_encoder();
-    } else {
-        cnt_10us++;
+        cnt_10us = 0;
     }
+
+    cnt_10us++;
     cntDelay++;
 }
 
@@ -85,15 +85,15 @@ unsigned int getRightMotorDuty()
 	return rMotorDuty;
 }
 
-void setLeftMotorDuty(unsigned int duty)
+void setLeftMotorDuty(unsigned char duty)
 {
-	cnt_10us = 0;
+//	cnt_10us = 0;
 	lMotorDuty = duty;
 }
 
 void setRightMotorDuty(unsigned int duty)
 {
-	cnt_10us = 0;
+//	cnt_10us = 0;
 	rMotorDuty = duty;
 }
 
@@ -204,7 +204,7 @@ unsigned int getGpt12_T4()
 
 void update_encoder(void)
 {
-    static const float Ts = 0.00001;
+    static const float Ts = 0.001;
     static boolean ENCA, ENCB;
     static int PosCnt = 0, PosCntd = 0;
     static int S, S_old=0;
@@ -251,13 +251,13 @@ void update_encoder(void)
     PosCntd = PosCnt;
 
     theta = Pos_rad;
-    w = (theta-theta_old)/Ts;
-    w = LPF(w_old, w, Ts, 0.7);
+    w = (float)(theta-theta_old)/Ts;
+    w = LPF(w_old, w, Ts, 1);
     w_old = w;
     theta_old = theta;
 }
 
-int motor_pid(float w_ref)
+unsigned char motor_pid(float w_ref)
 {
     static const float32 Ts = 0.001;
     static float32 Vin;
@@ -280,7 +280,7 @@ int motor_pid(float w_ref)
     if (error_w_int>10)
     {error_w_int=10;}
 
-    Vin = KP*error_w + KI*error_w_int + KD*error_w_det_filt;
+    Vin = (KP*error_w + KI*error_w_int + KD*error_w_det_filt);
 
     if (Vin>11)
     {
@@ -292,5 +292,5 @@ int motor_pid(float w_ref)
     }
 
     Vin = ((Vin*100) / 12);
-    return (int)Vin;
+    return (unsigned char)Vin;
 }

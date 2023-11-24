@@ -1,10 +1,10 @@
 #ifndef GPT12_H_
 #define GPT12_H_
 
-int motor_pid(float w_ref);
+unsigned char motor_pid(float w_ref);
 unsigned int getLeftMotorDuty(void);
 unsigned int getRightMotorDuty(void);
-void setLeftMotorDuty(unsigned int duty);
+void setLeftMotorDuty(unsigned char duty);
 void setRightMotorDuty(unsigned int duty);
 unsigned int getcntDelay(void);
 void setcntDelay(unsigned int n);

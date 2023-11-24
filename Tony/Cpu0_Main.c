@@ -20,14 +20,16 @@ int core0_main(void)
     Init_GPIO();
     Init_DCMotors();
 
-
-    int motor_value = 0;
+    unsigned char motor_value = 0;
     int direction = 1;
     while(1)
     {
-        motor_value = motor_pid(100);
+        motor_value = motor_pid(25);
         movChA_PWM(motor_value, direction);
-        my_printf("%d, %.2f\n", motor_value, getWValue());
+        if ( !(getcntDelay() % 100000) )
+        {
+            my_printf("%d %.2f\n", motor_value, getWValue());
+        }
     }
     return (1);
 }
