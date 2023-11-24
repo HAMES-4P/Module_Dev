@@ -18,8 +18,8 @@
 #define GPT120_MODULE_FREQUENCY     100000000
 #define PI                          3.14159265358979323
 
-#define KP                          0.31
-#define KI                          0.63
+#define KP                          10
+#define KI                          2
 #define KD                          0.0003
 
 #define ENC_A_CH    &MODULE_P02,4
@@ -52,9 +52,13 @@ void IsrGpt2T6Handler()
         IfxPort_setPinLow(PWM_B);   // Right Motor (CH-B)
     }
     */
-    if ( !(cnt_10us % 100) )
+    if ( !(cnt_10us % 10) )
     {
         update_encoder();
+    }
+
+    if ( !(cnt_10us % 100) )
+    {
         cnt_10us = 0;
     }
 
@@ -204,7 +208,7 @@ unsigned int getGpt12_T4()
 
 void update_encoder(void)
 {
-    static const float Ts = 0.001;
+    static const float Ts = 0.0001;
     static boolean ENCA, ENCB;
     static int PosCnt = 0, PosCntd = 0;
     static int S, S_old=0;
@@ -252,7 +256,7 @@ void update_encoder(void)
 
     theta = Pos_rad;
     w = (float)(theta-theta_old)/Ts;
-    w = LPF(w_old, w, Ts, 1);
+    w = LPF(w_old, w, Ts, 100);
     w_old = w;
     theta_old = theta;
 }
@@ -280,7 +284,11 @@ unsigned char motor_pid(float w_ref)
     if (error_w_int>10)
     {error_w_int=10;}
 
-    Vin = (KP*error_w + KI*error_w_int + KD*error_w_det_filt);
+	/* 
+	 * w_ref * 95 / 288 : 각속도 to PWM 환산값
+	 * KP*error_w + KI*error_w_int + KD*error_w_det_filt : error feedback
+	 */
+    Vin = (w_ref * 95 / 288) + (KP*error_w + KI*error_w_int + KD*error_w_det_filt);
 
     if (Vin>11.5)
     {

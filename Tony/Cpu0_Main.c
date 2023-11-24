@@ -20,15 +20,17 @@ int core0_main(void)
     Init_GPIO();
     Init_DCMotors();
 
-    unsigned char motor_value = 0;
-    int direction = 1;
+    // w_ref 288 -> PWM 95
+    static const float target_w_ref = 182;
+    static unsigned char now_motor_value = 0;
+    static int direction = 1;
     while(1)
     {
-        motor_value = motor_pid(20);
-        movChA_PWM(motor_value, direction);
-        if ( !(getcntDelay() % 100000) )
+        now_motor_value = motor_pid(target_w_ref);
+        movChA_PWM(now_motor_value, direction);
+        if ( !(getcntDelay() % 10000) )
         {
-            my_printf("%d %.2f\n", motor_value, getWValue());
+            my_printf("%2d %.2f\n", now_motor_value, getWValue());
         }
     }
     return (1);
