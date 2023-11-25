@@ -18,19 +18,49 @@ int core0_main(void)
 
     Init_Mystdio();
     Init_GPIO();
+    setLED1(0);
+    setLED2(0);
     Init_DCMotors();
 
     // w_ref 288 -> PWM 95
-    static const float target_w_ref = 182;
+    static const float target_w_ref = 218;
     static unsigned char now_motor_value = 0;
     static int direction = 1;
+    static int sw1_old = 0;
+    static int sw1 = 0;
+    static boolean mode = 0;
+
     while(1)
     {
-        now_motor_value = motor_pid(target_w_ref);
-        movChA_PWM(now_motor_value, direction);
-        if ( !(getcntDelay() % 10000) )
+        sw1 = getSW1();
+        if (sw1_old != sw1)
         {
-            my_printf("%2d %.2f\n", now_motor_value, getWValue());
+            if ( sw1_old && !sw1)
+            {
+                mode = !mode;
+                setLED1(mode);
+            }
+
+            sw1_old = sw1;
+        }
+
+
+        if ( !mode )
+        {
+            movChA_PWM(72, direction);
+            if ( !(getcntDelay() % 10000) )
+            {
+                my_printf("PWM: %2d\n", 72);
+            }
+        }
+        else
+        {
+            now_motor_value = motor_pid(target_w_ref);
+            movChA_PWM(now_motor_value, direction);
+            if ( !(getcntDelay() % 10000) )
+            {
+                my_printf("w_ref: %.2f\n", getWValue());
+            }
         }
     }
     return (1);
