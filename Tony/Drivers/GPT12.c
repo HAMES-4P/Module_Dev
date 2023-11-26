@@ -52,6 +52,8 @@ void IsrGpt2T6Handler()
         IfxPort_setPinLow(PWM_B);   // Right Motor (CH-B)
     }
     */
+	
+	/* 100us마다 엔코더를 업데이트 */
     if ( !(cnt_10us % 10) )
     {
         update_encoder();
@@ -66,6 +68,7 @@ void IsrGpt2T6Handler()
     cntDelay++;
 }
 
+/* Low Pass Filter */
 float32 LPF(float32 y_old, float32 x, float32 Ts, float32 band)
 {
     double A1=Ts/(Ts+1/band);
@@ -74,6 +77,7 @@ float32 LPF(float32 y_old, float32 x, float32 Ts, float32 band)
     return y;
 }
 
+/* 각속도 get 함수 */
 float getWValue()
 {
     return w;
@@ -254,6 +258,7 @@ void update_encoder(void)
     Pos_deg = (int)(PosCnt*7.5);
     PosCntd = PosCnt;
 
+	/* 각속도 계산 */
     theta = Pos_rad;
     w = (float)(theta-theta_old)/Ts;
     w = LPF(w_old, w, Ts, 100);
@@ -270,35 +275,46 @@ unsigned char motor_pid(float w_ref)
     static float32 error_w_det, error_w_det_old = 0;
     static float32 error_w_det_filt = 0, error_w_det_filt_old = 0;
 
+	/* 목표 각속도와 현재 각속도의 차이 계산 */
     error_w = w_ref - w;
 
+	/* 적분항 계산 */
     error_w_int=error_w_int_old + (error_w * Ts);
     error_w_int_old=error_w_int;
 
+	/* 미분항 계산 */
     error_w_det=(error_w_det_old-error_w)/Ts;
     error_w_det_old = error_w_det;
 
+	/* 미분항 Low Pass Filter 계산 */
+	/* 미분항의 팍 튀는 값을 줄이기 위함 */
     error_w_det_filt = LPF(error_w_det_filt_old, error_w_det_filt, Ts, 1);
     error_w_det_filt_old = error_w_det_filt;
 
+	/* 적분항이 너무 커지는 것을 제한 */
     if (error_w_int>10)
-    {error_w_int=10;}
+    {
+		error_w_int=10;
+	}
 
 	/* 
-	 * w_ref * 95 / 288 : 각속도 to PWM 환산값
+	 * w_ref : 목표 각속도
 	 * KP*error_w + KI*error_w_int + KD*error_w_det_filt : error feedback
 	 */
-    Vin = (w_ref * 95 / 288) + (KP*error_w + KI*error_w_int + KD*error_w_det_filt);
+    Vin = w_ref + (KP*error_w + KI*error_w_int + KD*error_w_det_filt);
 
-    if (Vin>11.5)
-    {
-        Vin=11.5;
-    }
-    else if(Vin<0)
-    {
-        Vin=0;
-    }
-
-    Vin = ((Vin*100) / 12);
+	/* 각속도 to PWM */
+	Vin = (Vin * 95) / 288;
+	
+	/* 출력값이 너무 크거나 작은 경우를 제한 */
+	if (Vin > 95)
+	{
+		Vin = 95;
+	}
+	else if (Vin < 0)
+	{
+		Vin = 0;
+	}
+	
     return (unsigned char)Vin;
 }

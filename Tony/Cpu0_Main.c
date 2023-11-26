@@ -18,20 +18,24 @@ int core0_main(void)
 
     Init_Mystdio();
     Init_GPIO();
-    setLED1(0);
-    setLED2(0);
+	_init_uart3();
     Init_DCMotors();
 
     // w_ref 288 -> PWM 95
+	static const boolean get_log = true;
     static const float target_w_ref = 218;
+	static const float PWM_speed = 72;
+	static float speed_decel = 1.0;
     static unsigned char now_motor_value = 0;
     static int direction = 1;
     static int sw1_old = 0;
     static int sw1 = 0;
+	static int distance = 0;
     static boolean mode = 0;
 
     while(1)
     {
+		// pulling 방식을 사용한 SW1 작동
         sw1 = getSW1();
         if (sw1_old != sw1)
         {
@@ -44,22 +48,36 @@ int core0_main(void)
             sw1_old = sw1;
         }
 
+		/* laser module 수신 */
+		distance = getTofDistance();
+		if ( 100 < distance && distance <= 200) {
+			speed_decel = 0.5;
+		} 
+		else if ( 0 < distance && distance <= 100)
+		{
+			speed_decel = 0.0;
+		}
+		else
+		{
+			speed_decel = 1.0;
+		}
 
+		// mode에 따라 PID 제어를 ON/OFF
         if ( !mode )
         {
-            movChA_PWM(72, direction);
-            if ( !(getcntDelay() % 10000) )
+            movChA_PWM(PWM_speed * speed_decel, direction);
+            if ( get_log && !(getcntDelay() % 10000) )
             {
-                my_printf("PWM: %2d\n", 72);
+                my_printf("PWM: %.1f, Vw: %.1f\n", (PWM_speed * speed_decel), getWValue());
             }
         }
         else
         {
-            now_motor_value = motor_pid(target_w_ref);
+            now_motor_value = motor_pid(target_w_ref * speed_decel);
             movChA_PWM(now_motor_value, direction);
-            if ( !(getcntDelay() % 10000) )
+            if ( get_log && !(getcntDelay() % 10000) )
             {
-                my_printf("w_ref: %.2f\n", getWValue());
+                my_printf("Vw: %.2f\n", getWValue());
             }
         }
     }
