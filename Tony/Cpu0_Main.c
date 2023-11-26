@@ -18,6 +18,7 @@ int core0_main(void)
 
     Init_Mystdio();
     Init_GPIO();
+	Init_Buzzer();
 	_init_uart3();
     Init_DCMotors();
 
@@ -52,14 +53,17 @@ int core0_main(void)
 		distance = getTofDistance();
 		if ( 100 < distance && distance <= 200) {
 			speed_decel = 0.5;
+			setBeepCycle(130);	// Beep every 0.5s
 		} 
 		else if ( 0 < distance && distance <= 100)
 		{
 			speed_decel = 0.0;
+			setBeepCycle(130);	// Beep every 0.5s
 		}
 		else
 		{
 			speed_decel = 1.0;
+			setBeepCycle(0);	// Beep off
 		}
 
 		// mode에 따라 PID 제어를 ON/OFF
