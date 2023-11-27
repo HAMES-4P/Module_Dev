@@ -7,6 +7,7 @@
 
 #include "Drivers/asclin.h"
 #include "Drivers/GPT12.h"
+#include "Drivers/ERU_Interrupt.h"
 
 #include "Etc/etc.h"
 #include "Etc/my_stdio.h"

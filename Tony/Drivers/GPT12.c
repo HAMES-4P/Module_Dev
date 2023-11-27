@@ -18,10 +18,6 @@
 #define GPT120_MODULE_FREQUENCY     100000000
 #define PI                          3.14159265358979323
 
-#define KP                          10
-#define KI                          2
-#define KD                          0.0003
-
 #define ENC_A_CH    &MODULE_P02,4
 #define ENC_B_CH    &MODULE_P02,5
 #define PWM_A       &MODULE_P02,1
@@ -33,6 +29,11 @@ static volatile unsigned int cnt_10us = 0;
 static volatile unsigned int cntDelay = 0;
 static volatile double theta, theta_old;
 static volatile float w, w_old;
+static volatile float kArr[3][3] = {{0.75, 0.76, 0}, {0.24, 0.65, 0.02}, {0.38, 0.63, 0.01}};
+static volatile int cur_floor_index = 1;
+static volatile float KP = 0.24;
+static volatile float KI = 0.65;
+static volatile float KD = 0.02;
 
 static void update_encoder(void);
 
@@ -52,8 +53,8 @@ void IsrGpt2T6Handler()
         IfxPort_setPinLow(PWM_B);   // Right Motor (CH-B)
     }
     */
-	
-	/* 100us마다 엔코더를 업데이트 */
+
+    /* 100us마다 엔코더를 업데이트 */
     if ( !(cnt_10us % 10) )
     {
         update_encoder();
@@ -85,34 +86,34 @@ float getWValue()
 
 unsigned int getLeftMotorDuty()
 {
-	return lMotorDuty;
+    return lMotorDuty;
 }
 
 unsigned int getRightMotorDuty()
 {
-	return rMotorDuty;
+    return rMotorDuty;
 }
 
 void setLeftMotorDuty(unsigned char duty)
 {
-//	cnt_10us = 0;
-	lMotorDuty = duty;
+//  cnt_10us = 0;
+    lMotorDuty = duty;
 }
 
 void setRightMotorDuty(unsigned int duty)
 {
-//	cnt_10us = 0;
-	rMotorDuty = duty;
+//  cnt_10us = 0;
+    rMotorDuty = duty;
 }
 
 unsigned int getcntDelay()
 {
-	return cntDelay;
+    return cntDelay;
 }
 
 void setcntDelay(unsigned int n)
 {
-	cntDelay = n;
+    cntDelay = n;
 }
 
 void init_gpt1(void)
@@ -120,13 +121,13 @@ void init_gpt1(void)
     /* Initialize the GPT12 module */
     IfxGpt12_enableModule(&MODULE_GPT120); /* Enable the GPT12 module */
 
-	/* Initialize the Timer T3 (PWM) */
+    /* Initialize the Timer T3 (PWM) */
     IfxGpt12_setGpt1BlockPrescaler(&MODULE_GPT120, IfxGpt12_Gpt1BlockPrescaler_32); /* Set GPT1 block prescaler: 32 */
     IfxGpt12_T3_setMode(&MODULE_GPT120, IfxGpt12_Mode_timer);                       /* Set T3 to timer mode */
     IfxGpt12_T3_setTimerDirection(&MODULE_GPT120, IfxGpt12_TimerDirection_down);    /* Set T3 count direction(down) */
     IfxGpt12_T3_setTimerPrescaler(&MODULE_GPT120, IfxGpt12_TimerInputPrescaler_32); /* Set T3 input prescaler(2^5=32) */
 
-	/* Calculate dutyUpTime and dutyDownTime for reloading timer T3 */
+    /* Calculate dutyUpTime and dutyDownTime for reloading timer T3 */
     IfxGpt12_T3_setTimerValue(&MODULE_GPT120, 100);       /* Set timer T3 value */
 
     /* Timer T2: reloads the value DutyDownTime in timer T3 */
@@ -149,7 +150,7 @@ void init_gpt1(void)
 void init_gpt2(void)
 {
     /* Initialize the GPT12 module */
-	IfxGpt12_enableModule(&MODULE_GPT120); /* Enable the GPT12 module */ /* Enable the GPT12 module */
+    IfxGpt12_enableModule(&MODULE_GPT120); /* Enable the GPT12 module */ /* Enable the GPT12 module */
 
     /* Initialize the Timer T6 for delay_ms */
     IfxGpt12_setGpt2BlockPrescaler(&MODULE_GPT120, IfxGpt12_Gpt1BlockPrescaler_4);  /* Set GPT2 block prescaler: 4 */
@@ -177,7 +178,7 @@ void runGpt12_T3()
 
 void stopGpt12_T3()
 {
-	IfxGpt12_T3_run(&MODULE_GPT120, IfxGpt12_TimerRun_stop);
+    IfxGpt12_T3_run(&MODULE_GPT120, IfxGpt12_TimerRun_stop);
 }
 
 void runGpt12_T6()
@@ -207,7 +208,7 @@ void setGpt12_T4(unsigned short value)
 
 unsigned int getGpt12_T4()
 {
-	return IfxGpt12_T4_getTimerValue(&MODULE_GPT120);
+    return IfxGpt12_T4_getTimerValue(&MODULE_GPT120);
 }
 
 void update_encoder(void)
@@ -258,7 +259,7 @@ void update_encoder(void)
     Pos_deg = (int)(PosCnt*7.5);
     PosCntd = PosCnt;
 
-	/* 각속도 계산 */
+    /* 각속도 계산 */
     theta = Pos_rad;
     w = (float)(theta-theta_old)/Ts;
     w = LPF(w_old, w, Ts, 100);
@@ -274,47 +275,66 @@ unsigned char motor_pid(float w_ref)
     static float32 error_w_int, error_w_int_old = 0;
     static float32 error_w_det, error_w_det_old = 0;
     static float32 error_w_det_filt = 0, error_w_det_filt_old = 0;
+    static float32 error_w_thr = 10;
+    static float32 error_w_abs = 0;
 
-	/* 목표 각속도와 현재 각속도의 차이 계산 */
+    /* 목표 각속도와 현재 각속도의 차이 계산 */
     error_w = w_ref - w;
 
-	/* 적분항 계산 */
+    /* 적분항 계산 */
     error_w_int=error_w_int_old + (error_w * Ts);
     error_w_int_old=error_w_int;
 
-	/* 미분항 계산 */
+    /* 미분항 계산 */
     error_w_det=(error_w_det_old-error_w)/Ts;
     error_w_det_old = error_w_det;
 
-	/* 미분항 Low Pass Filter 계산 */
-	/* 미분항의 팍 튀는 값을 줄이기 위함 */
+    /* 미분항 Low Pass Filter 계산 */
+    /* 미분항의 팍 튀는 값을 줄이기 위함 */
     error_w_det_filt = LPF(error_w_det_filt_old, error_w_det_filt, Ts, 1);
     error_w_det_filt_old = error_w_det_filt;
+    error_w_abs = (error_w > 0) ? error_w : -1 * error_w;
 
-	/* 적분항이 너무 커지는 것을 제한 */
-    if (error_w_int>10)
+    // 에러의 임계값과 부호를 통해 gain을 업데이트
+    if (error_w_abs > error_w_thr)
     {
-		error_w_int=10;
-	}
+        if ((error_w > 0) && (cur_floor_index > 0))
+        {
+            cur_floor_index -= 1;
+        }
+        else if ((error_w < 0) && (cur_floor_index < 2))
+        {
+            cur_floor_index += 1;
+        }
 
-	/* 
-	 * w_ref : 목표 각속도
-	 * KP*error_w + KI*error_w_int + KD*error_w_det_filt : error feedback
-	 */
+        KP = kArr[cur_floor_index][0];
+        KI = kArr[cur_floor_index][1];
+        KD = kArr[cur_floor_index][2];
+    }
+    /* 적분항이 너무 커지는 것을 제한 */
+    if (10 < error_w_int)
+    {
+        error_w_int = 10;
+    }
+
+    /*
+     * w_ref : 목표 각속도
+     * KP*error_w + KI*error_w_int + KD*error_w_det_filt : error feedback
+     */
     Vin = w_ref + (KP*error_w + KI*error_w_int + KD*error_w_det_filt);
 
-	/* 각속도 to PWM */
-	Vin = (Vin * 95) / 288;
-	
-	/* 출력값이 너무 크거나 작은 경우를 제한 */
-	if (Vin > 95)
-	{
-		Vin = 95;
-	}
-	else if (Vin < 0)
-	{
-		Vin = 0;
-	}
-	
+    /* 각속도 to PWM */
+    Vin = ((Vin * 95) / 288)-10;
+
+    /* 출력값이 너무 크거나 작은 경우를 제한 */
+    if (Vin > 95)
+    {
+        Vin = 95;
+    }
+    else if (Vin < 0)
+    {
+        Vin = 0;
+    }
+
     return (unsigned char)Vin;
 }
