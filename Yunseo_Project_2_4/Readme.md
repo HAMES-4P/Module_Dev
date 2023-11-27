@@ -10,18 +10,18 @@
   우리가 요구사항에 맞게 개발할 시스템 또한 Arduino moter shield를 사용하기에 규격상으로도 맞는 개발 환경이다.
   step input을 모터의 PWM 핀에 인가하고 모터의 엔코더에 측정되는 출력값을 scope를 통해 Matlab workspace로 저장한다. 
  
- (2번 이미지)
+![image](https://github.com/HAMES-4P/Module_Dev/assets/94425657/4fa50d9a-9e3e-4f4d-b4f2-07b8e8ab2141)
  
  입력값과 출력값을 Matlab 전달함수 추정함수를 통해 구하고 추정된 전달함수의 Bode plot을 통해 일반적인 모터의 전달함수 형태와 맞는지 확인한다.
 
- (3번 이미지) 
+![image](https://github.com/HAMES-4P/Module_Dev/assets/94425657/c7535930-b791-4a2d-b995-67461f4ee79b)
 
  추정된 전달함수에 측정한 입력값을 넣어서 추정 전달함수의 출력값을 구하고 실제 측정된 출력값과 비교하여 검증한다.
 
- (4번 이미지) 
+![image](https://github.com/HAMES-4P/Module_Dev/assets/94425657/95acc317-9e7f-46fa-8b0e-1ef95ffa24f5)
 
  PID의 gain을 tuning 할 수 있도록 하는 매트랩 함수를 통해 각 gain들을 얻어내고,
 
- (5번 이미지) 
+![image](https://github.com/HAMES-4P/Module_Dev/assets/94425657/510ee5d6-9a0b-4d57-8a1c-5256dd1e73e4)
 
  위와 같이 gain들로 이루어진 controller에 의한 step response를 구하고 그 controller가 원하는 rise time과 overshoot를 만족하는지 확인한다. 만일 만족하지 않는다면 다시 tuning을 한다.
