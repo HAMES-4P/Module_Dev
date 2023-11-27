@@ -4,7 +4,7 @@
   본 개발용 SW는 모터 시스템의 물리적 구조에 구애받지 않고, 모터 시스템에 입력을 준 후 엔코더로 받은 출력 값을 측정하고, 입력값과 출력값을 통해 시스템의 전달함수를 추정하고 검증한다.
   또한 추정한 전달함수를 통해 PID 시스템의 적절한 gain값을 정하고 설정된 gain값이 반영된 controller와 전달함수를 통해 step response를 시뮬레이션을 통해 알아내고 그 시스템의 rise time과 overshoot를 그래프를 통해 볼 수 있다.
 
-(1번 이미지)
+![image](https://github.com/HAMES-4P/Module_Dev/assets/94425657/28decba5-644a-4f87-a788-2f40b3c18a75)
  
   Matlab 상으로 개발한 모델을 쓰기 위해 ArduinoMega2560 보드를 사용하였다.
   우리가 요구사항에 맞게 개발할 시스템 또한 Arduino moter shield를 사용하기에 규격상으로도 맞는 개발 환경이다.
